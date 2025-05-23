@@ -1,0 +1,68 @@
+[package]
+name = "kuttab"
+version = "0.1.0"
+edition = "2021"
+
+[[bin]]
+name = "generate_ngrams"
+path = "src/bin/generate_ngrams.rs"
+
+[[bin]]
+name = "find_matches"
+path = "src/bin/find_matches.rs"
+
+[dependencies]
+lmdb_rkv = { package = "lmdb-rkv", version = "0.14.0" }
+clap = { version = "4.0", features = ["derive"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+bincode = "1.3"
+fastrand = "1.9.0"
+log = "0.4"
+env_logger = "0.10"
+thiserror = "1.0"
+lazy_static = "1.4"
+regex = "1.5"
+base64 = "0.21"
+rayon = "1.8"
+crossbeam-utils = "0.8"
+indicatif = { version = "0.17", features = ["rayon"] }
+num_cpus = "1.16"
+lru = "0.12"
+rand = "0.8"
+dashmap = "5.5"
+libc = "0.2"
+ahash = "0.8.6"
+memchr = "2.6"
+wide = "0.7"
+simd-json = "0.13"
+memmap2 = "0.5"
+tokio = { version = "1", features = ["rt", "macros", "fs", "io-util", "time", "sync", "rt-multi-thread"] }
+hex = "0.4"
+bit-vec = "0.8.0"
+once_cell = "1.20.3"
+rstar = "0.10.0" 
+crossbeam-channel = "0.5.8"  # For bounded channels between pipeline stages
+parking_lot = "0.12.1"
+sys-info = "0.9.1"
+csv = "1.1"
+chrono = "0.4"
+ctrlc = "3.2"
+[dev-dependencies]
+tempfile = "3.8"
+
+[features]
+# Base features
+default = ["simd-auto"]
+
+# SIMD feature options
+simd-auto = []
+simd-sse2 = []
+simd-avx2 = []
+simd-neon = []
+simd-disabled = []
+
+[profile.release]
+debug = true
+codegen-units = 1
+lto = false
