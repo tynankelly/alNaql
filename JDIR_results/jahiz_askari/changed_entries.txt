@@ -1,0 +1,14 @@
+# Clusters that were moved:
+  {
+    "cluster_id": 129,
+    "size": 1,
+    "items": [
+      {
+        "filename": "passim.csv",
+        "text1": "يكون اللفظ بجميع التوراة والانجيل متفقا علي تاويله كما يكون متفقا علي تنزيله ولا يكون بين جميع النصاري واليهود اختلاف في شء من التاويلات وينبغي لك ان لا ترجع الا الي لغة لا اختلاف في تاويل الفاظها ولو شاء الله ان ينزل كتبه ويجعل كلام انبياءه وورثة رسله لا يحتاج الي تفسير لفعل ولكنا لم نر شيءا من الدين والدنيا دفع الينا علي الكفاية ولو كان كان الامر كذلك لسقطت البلوي والمحنة وذهبت المسابقة والمنافسة ولم يكن",
+        "text2": "يكون اللفظ بجميع التوراة والانجيل متفقا علي تاويله كما يكون متفقا علي تنزيله ولا يكون بين النصاري اختلاف في شء من التاويلات ولو شاء الله ان ينزل كتبه ويجعل كلام انبياءه وورثة رسله كلاما لا يحتاج الي التفسير لفعل ولكننا لم نر شيءا من الدين والدنيا دفع الينا علي الكفاية ولو كان الامر كذلك لسقطت المحنة والبلوي وذهبت المسابقة والمنافسة ولم يكن"
+      }
+    ]
+  },# moved to 130
+# Removed from textpair.jsonl
+{"source_author":"jahiz","source_context_after":"","source_context_before":"","source_doc_id":"2","source_end_byte":74256,"source_end_position":"5.08","source_filename":"/data1/output/source/TEXT/0255Jahiz.BayanWaTabyin.JK001009-ara1.txt","source_next":"","source_ngrams":"2.json","source_parent":"0 0 0 0 0 0 0","source_parsed_filename":"output/source/words_and_philo_ids/2.lz4","source_passage":"الله بن معاويه بن عبد الله بن جعفر","source_philo_doc_id":"2","source_philo_id":"2 0 0 0 0 0 0","source_philo_name":"text","source_philo_seq":"1","source_philo_type":"doc","source_prev":"","source_start_byte":74195,"source_start_position":"5.08","source_title":"bayan","source_word_count":"158447","source_year":"255","target_author":"askari","target_context_after":"","target_context_before":"","target_doc_id":"1","target_end_byte":614854,"target_end_position":"85.37","target_filename":"/data1/output/source/TEXT/0395AbuHilalCaskari.Sinacatayn.JK006910-ara1.txt","target_next":"","target_ngrams":"1.json","target_parent":"0 0 0 0 0 0 0","target_parsed_filename":"output/source/words_and_philo_ids/1.lz4","target_passage":"الله بن معاويه بن عبد الله بن جعفر","target_philo_doc_id":"1","target_philo_id":"1 0 0 0 0 0 0","target_philo_name":"text","target_philo_seq":"0","target_philo_type":"doc","target_prev":"","target_start_byte":614793,"target_start_position":"85.36","target_title":"sina3atayn","target_word_count":"76754","target_year":"395","banality":false,"group_id":13,"count":1}
