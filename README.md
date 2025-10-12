@@ -95,7 +95,7 @@ brew install lmdb
 
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/alnaql.git
+git clone https://github.com/tynankelly/alnaql.git
 cd alnaql
 
 # Build in release mode (optimized)
@@ -116,7 +116,7 @@ This installs the binaries to `~/.cargo/bin/` (make sure it's in your PATH).
 
 ### Option 3: Download Pre-built Binaries
 
-Download the latest release for your platform from the [Releases page](https://github.com/yourusername/alnaql/releases).
+Download the latest release for your platform from the [Releases page](https://github.com/tynankelly/alnaql/releases).
 
 ---
 
@@ -133,8 +133,8 @@ Organize your text files:
 ```
 data/
 ├── source/          # Primary texts to analyze
-│   ├── book1.xml
-│   └── book2.xml
+│   ├── source1.xml
+│   └── source2.xml
 └── target/          # Texts to compare against
     ├── target1.xml
     └── target2.xml
@@ -155,12 +155,12 @@ target_dir = "data/target"
 output_dir = "output"
 
 [generation]
-ngram_size = 5
-ngram_type = "character"
+ngram_size = 3
+ngram_type = "word"
 
 [matching]
 ngram_similarity_metric = "cosine"
-min_similarity_threshold = 0.75
+min_similarity_threshold = 0.7
 ```
 
 ### 3. Generate N-grams
@@ -196,8 +196,8 @@ generate_ngrams [CONFIG_FILE]
 
 ```ini
 [generation]
-ngram_size = 5              # Size of n-grams (3-7 typical for character)
-ngram_type = "character"    # "character" or "word"
+ngram_size = 3              # Size of n-grams (3-7 typical for character)
+ngram_type = "word"         # "character" or "word"
 stride = 1                  # 1 = overlapping, >1 = skip n-1 positions
 use_parallel = true         # Enable parallel processing
 thread_count = 0            # 0 = auto-detect, or specify number
@@ -236,22 +236,41 @@ find_matches [CONFIG_FILE] [OPTIONS]
 --job-file <path>        # Use specific job tracking file
 ```
 
-**Configuration options:**
+## Configuration
+
+AlNaql uses INI-style configuration files with multiple sections:
+### Configuration Sections
+
+| Section | Purpose |
+|---------|---------|
+| `[paths]` | Input/output directory paths |
+| `[parser]` | Text preprocessing and normalization |
+| `[generation]` | N-gram generation parameters |
+| `[matching]` | Similarity algorithms and thresholds |
+| `[storage]` | LMDB database settings |
+| `[execution]` | Parallel processing strategy |
+| `[binary_io]` | Output format and compression |
+| `[debug]` | Logging and diagnostics |
+
 
 ```ini
 [matching]
+process_strategy = "grid"             # process strategy for whole find_matches process ("grid" gives best results and performance, "sequential" and "paralle are also options)
+ngram_matching_strategy = "parallel"  # process n-gram matches "sequential", "parallel", "parallelopt"
 ngram_similarity_metric = "cosine"    # cosine, jaccard, levenshtein, combined
-min_similarity_threshold = 0.75       # Minimum similarity (0.0-1.0)
-min_match_length = 50                 # Minimum match length in characters
-max_gap_length = 20                   # Maximum gap within a match
+min_similarity_threshold = 0.7       # Minimum similarity (0.0-1.0)
+min_match_length = 5                 # Minimum match length in characters or words
+max_gap = 10                      # Maximum gap within a match
+adjacent_merge_ration = .7          # Distance between matches before merging as percent of the combined length of the two matches
 
-clustering_mode = "spatial"           # spatial, chains, or none
-grid_cell_size = 1000                 # Grid cell size for spatial clustering
+clustering_mode = "proximity"           # "sequential" (n-gram matches must be in order) or "proximity" (n-gram matches may be out of order)
+proximity_distance = 8              # Distnce between n-gram matches in a cluster in proximity mode
+grid_cell_size = 1000                 # Grid cell size for grid matching n-gram matcing
 
 [execution]
-processing_mode = "parallel"          # sequential or parallel
-max_parallel_comparisons = "auto"     # Number of simultaneous comparisons
-parallel_strategy = "smart"           # smart, pooled, or unrestricted
+processing_mode = "parallel"          # sequential or parallel for n-gram comparison
+max_parallel_comparisons = "auto"     # Number of simultaneous comparisons for find_matches; 1 for sequential, 2+ or auto for parallel
+parallel_strategy = "smart"           # smart, pooled, or unrestricted for find_matches
 ```
 
 **Output formats:**
@@ -270,25 +289,6 @@ Output files:
 
 ---
 
-## Configuration
-
-AlNaql uses INI-style configuration files with multiple sections:
-
-### Configuration Sections
-
-| Section | Purpose |
-|---------|---------|
-| `[paths]` | Input/output directory paths |
-| `[parser]` | Text preprocessing and normalization |
-| `[generation]` | N-gram generation parameters |
-| `[matching]` | Similarity algorithms and thresholds |
-| `[storage]` | LMDB database settings |
-| `[execution]` | Parallel processing strategy |
-| `[binary_io]` | Output format and compression |
-| `[debug]` | Logging and diagnostics |
-
-### Key Configuration Parameters
-
 **Text Processing:**
 ```ini
 [parser]
@@ -298,15 +298,6 @@ remove_tatweel = true
 normalize_arabic = true
 preserve_punctuation = false
 stop_words_file = "stopwords.txt"  # Optional
-```
-
-**Similarity Thresholds:**
-```ini
-[matching]
-min_similarity_threshold = 0.75    # Primary threshold (0.0-1.0)
-min_match_length = 50              # Minimum characters
-max_gap_length = 20                # Gap tolerance
-merge_adjacent_matches = true      # Merge nearby matches
 ```
 
 **Performance Tuning:**
@@ -426,7 +417,7 @@ For massive datasets, use grid-based processing:
 
 ```ini
 [matching]
-grid_cell_size = 1000              # Cell size in n-grams
+comparisons_per_cell = 10000000    # Number of n-gram comparisons per cell
 grid_cluster_chunks = 5000         # Clustering chunk size
 
 [execution]
