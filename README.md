@@ -1,4 +1,4 @@
-# AlNaql
+# alNaql
 
 **High-Performance Arabic Text Comparison and Matching System**
 
