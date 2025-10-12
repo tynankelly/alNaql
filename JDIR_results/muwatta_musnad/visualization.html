@@ -1,0 +1,827 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Text Clusters Visualization - Three-Way Venn Diagram</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
+<style>
+body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    margin: 0;
+    padding: 20px;
+    background-color: #f9f9f9;
+}
+.container {
+    max-width: 1200px;
+    margin: 0 auto;
+    background-color: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+    padding: 20px;
+}
+h1 {
+    text-align: center;
+    color: #333;
+    margin-top: 0;
+}
+.description {
+    text-align: center;
+    margin-bottom: 30px;
+    color: #666;
+    max-width: 800px;
+    margin-left: auto;
+    margin-right: auto;
+}
+#visualization {
+    margin: 0 auto;
+    width: 100%;
+    height: 700px;
+    position: relative;
+    overflow: hidden;
+}
+.tooltip {
+    position: absolute;
+    background-color: white;
+    padding: 10px;
+    border-radius: 4px;
+    box-shadow: 0 1px 8px rgba(0,0,0,0.2);
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.2s;
+    font-size: 14px;
+    max-width: 300px;
+    z-index: 100;
+}
+.tooltip-title {
+    font-weight: bold;
+    margin-bottom: 5px;
+    border-bottom: 1px solid #eee;
+    padding-bottom: 5px;
+}
+.tooltip-content {
+    line-height: 1.4;
+}
+.file-region {
+    transition: opacity 0.3s, fill 0.3s;
+    cursor: pointer;
+}
+.file-label-group {
+    pointer-events: none;
+}
+.file-label {
+    font-size: 16px;
+    font-weight: bold;
+    text-anchor: middle;
+    pointer-events: none;
+}
+.file-label-bg {
+    opacity: 0.8;
+}
+.legend-container {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    background-color: white;
+    padding: 10px;
+    border-radius: 4px;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.1);
+}
+.legend-title {
+    font-weight: bold;
+    margin-bottom: 8px;
+    text-align: center;
+}
+.legend-item {
+    display: flex;
+    align-items: center;
+    margin-bottom: 5px;
+}
+.legend-color {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    margin-right: 8px;
+}
+.legend-text {
+    font-size: 14px;
+}
+.legend-note {
+    font-size: 12px;
+    color: #666;
+    margin-top: 8px;
+    text-align: center;
+}
+.stats {
+    margin-top: 40px;
+    padding: 15px;
+    background-color: #f5f5f5;
+    border-radius: 4px;
+}
+.stats-title {
+    font-weight: bold;
+    margin-bottom: 10px;
+}
+.stat-row {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 5px;
+}
+.controls {
+    margin: 20px 0;
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+}
+button {
+    padding: 8px 16px;
+    background-color: #4CAF50;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+}
+button:hover {
+    background-color: #45a049;
+}
+button:disabled {
+    background-color: #cccccc;
+    cursor: not-allowed;
+}
+.slider-container {
+    margin-top: 20px;
+    text-align: center;
+}
+.slider-label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: bold;
+}
+input[type="range"] {
+    width: 300px;
+}
+.loading {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 18px;
+    color: #666;
+}
+.node {
+    transition: opacity 0.3s, stroke-width 0.3s;
+    cursor: pointer;
+}
+</style>
+</head>
+<body>
+<div class="container">
+    <h1>Text Clusters Visualization</h1>
+    <p class="description">
+        This visualization shows the distribution of text match clusters across three different text reuse detection systems. 
+        Each bubble represents a cluster, with size indicating the number of matches. Bubbles are positioned based on 
+        which system(s) detected the matches, with overlapping areas showing clusters detected by multiple systems.
+    </p>
+
+    <div class="controls">
+        <button id="resetBtn">Reset View</button>
+        <button id="centerBtn">Center Clusters</button>
+        <button id="relaxBtn">Relax Forces</button>
+    </div>
+
+    <div class="slider-container">
+        <label class="slider-label" for="forceSlider">Adjust grouping force:</label>
+        <input type="range" id="forceSlider" min="0" max="1" step="0.01" value="0.7">
+    </div>
+
+    <div id="visualization">
+        <div class="loading">Loading visualization...</div>
+    </div>
+
+    <div class="stats">
+        <div class="stats-title">Statistics</div>
+        <div id="statsContent"></div>
+    </div>
+</div>
+
+<script>
+    // Main visualization function
+    async function createVisualization() {
+        // Load data
+        try {
+            const response = await fetch('muwatta_musnad.json');
+            const rawData = await response.json();
+
+            // Set up visualization dimensions
+            const width = document.getElementById('visualization').clientWidth;
+            const height = 700;
+
+            // Remove loading message
+            d3.select('.loading').remove();
+
+            // Create SVG container
+            const svg = d3.select('#visualization')
+                .append('svg')
+                .attr('width', width)
+                .attr('height', height)
+                .attr('viewBox', [0, 0, width, height]);
+
+            // Add zoom capability
+            const zoom = d3.zoom()
+                .scaleExtent([0.5, 5])
+                .on('zoom', (event) => {
+                    g.attr('transform', event.transform);
+                });
+
+            svg.call(zoom);
+
+            // Create a group for all visualization elements
+            const g = svg.append('g');
+
+            // Define file colors
+            const fileColors = {
+                'alnaql.jsonl': '#ff0000', // red
+                'textpair.jsonl': '#ffff00', // yellow
+                'passim.csv': '#0000ff' // blue
+            };
+
+            // Process data
+            const processedData = processData(rawData, fileColors);
+
+            // Display statistics
+            displayStatistics(processedData, rawData);
+
+            // Create file regions
+            const fileRegionsGroup = g.append('g').attr('class', 'file-regions');
+
+            // Anchor points for each file region (equilateral triangle)
+            const triangleSide = Math.min(width, height) * 0.7; // Increased size for better separation
+            const centerX = width / 2;
+            const centerY = height / 2;
+            const angle = (2 * Math.PI) / 3;
+
+            const fileAnchors = {
+                'alnaql.jsonl': [centerX, centerY - triangleSide * 0.45], // Top - positioned higher
+                'textpair.jsonl': [centerX - triangleSide * 0.45, centerY + triangleSide * 0.3], // Bottom Left - further left
+                'passim.csv': [centerX + triangleSide * 0.45, centerY + triangleSide * 0.3] // Bottom Right - further right
+            };
+
+            // Create force simulation
+            let forceStrength = 0.9; // Increased for stronger positioning and less influence between groups
+            let simulation = createForceSimulation(processedData.nodes, width, height, fileAnchors, forceStrength);
+
+            // Create regions for each file
+            const fileRegions = fileRegionsGroup.selectAll('.file-region')
+                .data(Object.keys(fileColors))
+                .enter()
+                .append('circle')
+                .attr('class', 'file-region')
+                .attr('cx', d => fileAnchors[d][0])
+                .attr('cy', d => fileAnchors[d][1])
+                .attr('r', triangleSide * 0.28)
+                .attr('fill', d => d3.color(fileColors[d]).copy({opacity: 0.15}))
+                .attr('stroke', d => d3.color(fileColors[d]).darker())
+                .attr('stroke-width', 1);
+
+            // Add file labels with background for better visibility
+            const fileLabels = g.selectAll('.file-label-group')
+                .data(Object.keys(fileColors))
+                .enter()
+                .append('g')
+                .attr('class', 'file-label-group')
+                .attr('transform', d => {
+                    let x = fileAnchors[d][0];
+                    // Position labels at the bottom of circles for textpair and passim, top for alnaql
+                    let y = d === 'alnaql.jsonl' 
+                        ? fileAnchors[d][1] - triangleSide * 0.3 // Top for alNaql
+                        : fileAnchors[d][1] + triangleSide * 0.3; // Bottom for the others
+                    return `translate(${x}, ${y})`;
+                });
+
+            fileLabels.append('rect')
+                .attr('class', 'file-label-bg')
+                .attr('x', -50)
+                .attr('y', -15)
+                .attr('width', 100)
+                .attr('height', 30)
+                .attr('rx', 5)
+                .attr('fill', 'white')
+                .attr('stroke', d => d3.color(fileColors[d]).darker())
+                .attr('stroke-width', 1);
+
+            fileLabels.append('text')
+                .attr('class', 'file-label')
+                .text(d => d.replace('.jsonl', '').replace('.csv', ''))
+                .attr('dy', 5)
+                .attr('fill', d => d3.color(fileColors[d]).darker());
+
+            // Create node group
+            const nodesGroup = g.append('g').attr('class', 'nodes');
+
+            // Create nodes (bubbles)
+            const nodes = nodesGroup.selectAll('.node')
+                .data(processedData.nodes)
+                .enter()
+                .append('circle')
+                .attr('class', 'node')
+                .attr('r', d => Math.sqrt(d.size) * 3 + 3)
+                .attr('fill', d => d.color)
+                .attr('stroke', d => d3.color(d.color).darker())
+                .attr('stroke-width', 1.5)
+                .attr('cx', d => d.x)
+                .attr('cy', d => d.y);
+
+            // Add tooltip
+            const tooltip = d3.select('body')
+                .append('div')
+                .attr('class', 'tooltip');
+
+            // Add interactivity to nodes
+            nodes
+                .on('mouseover', function(event, d) {
+                    // Highlight node
+                    d3.select(this)
+                        .attr('stroke-width', 3)
+                        .attr('stroke', '#333');
+
+                    // Show tooltip
+                    tooltip.style('opacity', 1)
+                        .html(`
+                            <div class="tooltip-title">Cluster #${d.id}</div>
+                            <div class="tooltip-content">
+                                <strong>Size:</strong> ${d.size} matches<br>
+                                <strong>Sources:</strong> ${d.files.map(f => f.replace('.jsonl', '').replace('.csv', '')).join(', ')}
+                                ${d.sample ? `<br><br><strong>Sample text:</strong><br>${d.sample}` : ''}
+                            </div>
+                        `)
+                        .style('left', (event.pageX + 10) + 'px')
+                        .style('top', (event.pageY - 10) + 'px');
+                })
+                .on('mouseout', function() {
+                    // Reset highlight
+                    d3.select(this)
+                        .attr('stroke-width', 1.5)
+                        .attr('stroke', d => d3.color(d.color).darker());
+
+                    // Hide tooltip
+                    tooltip.style('opacity', 0);
+                });
+
+            // Add interactivity to file regions
+            fileRegions
+                .on('mouseover', function(event, d) {
+                    // Highlight this region
+                    d3.select(this)
+                        .attr('fill', d3.color(fileColors[d]).copy({opacity: 0.3}))
+                        .attr('stroke-width', 2);
+
+                    // Dim nodes not in this file
+                    nodes.attr('opacity', node => {
+                        return node.files.includes(d) ? 1 : 0.2;
+                    });
+                })
+                .on('mouseout', function(event, d) {
+                    // Reset highlight
+                    d3.select(this)
+                        .attr('fill', d3.color(fileColors[d]).copy({opacity: 0.15}))
+                        .attr('stroke-width', 1);
+
+                    // Reset all nodes
+                    nodes.attr('opacity', 1);
+                });
+
+            // Update node positions on simulation tick
+            simulation.on('tick', () => {
+                nodes
+                    .attr('cx', d => d.x)
+                    .attr('cy', d => d.y);
+            });
+
+            // Create legend
+            createLegend(svg, fileColors);
+
+            // Add controls functionality
+            d3.select('#resetBtn').on('click', () => {
+                svg.transition().duration(750).call(zoom.transform, d3.zoomIdentity);
+            });
+
+            d3.select('#centerBtn').on('click', () => {
+                restartSimulation(simulation, processedData.nodes, width, height, fileAnchors, forceStrength);
+            });
+
+            d3.select('#relaxBtn').on('click', () => {
+                forceStrength = 0.2;
+                d3.select('#forceSlider').property('value', 0.2);
+                restartSimulation(simulation, processedData.nodes, width, height, fileAnchors, forceStrength);
+            });
+
+            // Add force strength slider functionality
+            d3.select('#forceSlider').on('input', function() {
+                forceStrength = +this.value;
+                restartSimulation(simulation, processedData.nodes, width, height, fileAnchors, forceStrength);
+            });
+
+        } catch (error) {
+            console.error('Error loading or processing data:', error);
+            d3.select('.loading').text('Error loading visualization: ' + error.message);
+        }
+    }
+
+    // Process the raw data for visualization
+    function processData(clusters, fileColors) {
+        // Count matches by file
+        const fileMatches = {};
+        let totalMatches = 0;
+
+        // Normalize filenames
+        const normalizedFileNames = {
+            'alnaql.jsonl': 'alnaql.jsonl',
+            'alNaql.jsonl': 'alnaql.jsonl',
+            'textpair.jsonl': 'textpair.jsonl',
+            'TextPAIR.jsonl': 'textpair.jsonl',
+            'passim.csv': 'passim.csv',
+            'passim .csv': 'passim.csv'
+        };
+
+        // Count unique matches in each file
+        clusters.forEach(cluster => {
+            cluster.items.forEach(item => {
+                const normalizedName = normalizedFileNames[item.filename] || item.filename;
+                
+                if (!fileMatches[normalizedName]) {
+                    fileMatches[normalizedName] = 0;
+                }
+                fileMatches[normalizedName]++;
+                totalMatches++;
+            });
+        });
+
+        // Create nodes for each cluster
+        const nodes = clusters.map(cluster => {
+            // Determine which files this cluster appears in
+            const fileSet = new Set();
+            cluster.items.forEach(item => {
+                const normalizedName = normalizedFileNames[item.filename] || item.filename;
+                fileSet.add(normalizedName);
+            });
+
+            const files = Array.from(fileSet);
+
+            // Determine color based on file membership
+            let color;
+            if (files.length === 1) {
+                // Single file - use the file's color
+                color = fileColors[files[0]] || '#999';
+            } else if (files.length === 2) {
+                // Two files - blend colors
+                const color1 = d3.rgb(fileColors[files[0]] || '#999');
+                const color2 = d3.rgb(fileColors[files[1]] || '#999');
+                color = d3.rgb(
+                    (color1.r + color2.r) / 2,
+                    (color1.g + color2.g) / 2,
+                    (color1.b + color2.b) / 2
+                ).toString();
+            } else if (files.length === 3) {
+                // Three files - blend all three colors
+                const color1 = d3.rgb(fileColors[files[0]] || '#999');
+                const color2 = d3.rgb(fileColors[files[1]] || '#999');
+                const color3 = d3.rgb(fileColors[files[2]] || '#999');
+                color = d3.rgb(
+                    (color1.r + color2.r + color3.r) / 3,
+                    (color1.g + color2.g + color3.g) / 3,
+                    (color1.b + color2.b + color3.b) / 3
+                ).toString();
+            } else {
+                color = '#ccc'; // Default color
+            }
+
+            // Extract a sample text if available
+            let sample = '';
+            if (cluster.items && cluster.items.length > 0 && cluster.items[0].text1) {
+                sample = cluster.items[0].text1;
+                if (sample.length > 100) {
+                    sample = sample.substring(0, 100) + '...';
+                }
+            }
+
+            return {
+                id: cluster.cluster_id,
+                size: cluster.size,
+                files: files,
+                color: color,
+                sample: sample,
+                x: Math.random() * 800,
+                y: Math.random() * 600
+            };
+        });
+
+        return {
+            nodes,
+            fileMatches,
+            totalMatches
+        };
+    }
+
+    // Create force simulation
+    function createForceSimulation(nodes, width, height, fileAnchors, strength) {
+        // Create array of file combinations for positioning
+        const fileTypes = Object.keys(fileAnchors);
+        
+        // Calculate midpoints between file anchors for dual-membership nodes
+        const midpoints = {};
+        for (let i = 0; i < fileTypes.length; i++) {
+            for (let j = i + 1; j < fileTypes.length; j++) {
+                const file1 = fileTypes[i];
+                const file2 = fileTypes[j];
+                const key = [file1, file2].sort().join('_');
+                
+                midpoints[key] = {
+                    x: (fileAnchors[file1][0] + fileAnchors[file2][0]) / 2,
+                    y: (fileAnchors[file1][1] + fileAnchors[file2][1]) / 2
+                };
+            }
+        }
+        
+        // Calculate center point for triple-membership nodes
+        const centerPoint = {
+            x: (fileAnchors[fileTypes[0]][0] + fileAnchors[fileTypes[1]][0] + fileAnchors[fileTypes[2]][0]) / 3,
+            y: (fileAnchors[fileTypes[0]][1] + fileAnchors[fileTypes[1]][1] + fileAnchors[fileTypes[2]][1]) / 3
+        };
+
+        // Custom force for x positioning with variable strength based on group membership
+        const forceX = d3.forceX().strength(d => {
+            // Use stronger force for multi-program nodes to keep them in position
+            if (d.files.length === 2) return strength * 1.2;
+            if (d.files.length === 3) return strength * 1.5;
+            return strength; 
+        }).x(d => {
+            if (d.files.length === 1) {
+                // Single file membership - position near the file's anchor
+                return fileAnchors[d.files[0]][0];
+            } else if (d.files.length === 2) {
+                // Two file membership - position at the midpoint
+                const key = [d.files[0], d.files[1]].sort().join('_');
+                return midpoints[key]?.x || width / 2;
+            } else if (d.files.length === 3) {
+                // Three file membership - position exactly at center
+                return centerPoint.x;
+            }
+            return width / 2;
+        });
+
+        // Custom force for y positioning with variable strength
+        const forceY = d3.forceY().strength(d => {
+            // Use stronger force for multi-program nodes to keep them in position
+            if (d.files.length === 2) return strength * 1.2;
+            if (d.files.length === 3) return strength * 1.5;
+            return strength;
+        }).y(d => {
+            if (d.files.length === 1) {
+                // Single file membership - position near the file's anchor
+                return fileAnchors[d.files[0]][1];
+            } else if (d.files.length === 2) {
+                // Two file membership - position at the midpoint
+                const key = [d.files[0], d.files[1]].sort().join('_');
+                return midpoints[key]?.y || height / 2;
+            } else if (d.files.length === 3) {
+                // Three file membership - position exactly at center
+                return centerPoint.y;
+            }
+            return height / 2;
+        });
+
+        const simulation = d3.forceSimulation(nodes)
+            .force('x', forceX)
+            .force('y', forceY)
+            .force('charge', d3.forceManyBody().strength(-20)) // Reduce repulsion between nodes
+            .force('collide', d3.forceCollide(d => Math.sqrt(d.size) * 3 + 5).iterations(4)) // More iterations for better collision detection
+            .alphaDecay(0.008); // Slower decay for better positioning
+
+        return simulation;
+    }
+
+    // Restart simulation with current parameters
+    function restartSimulation(simulation, nodes, width, height, fileAnchors, strength) {
+        simulation.stop();
+        
+        // Get the current forces
+        const forceX = simulation.force('x');
+        const forceY = simulation.force('y');
+        
+        // Update strength
+        forceX.strength(strength);
+        forceY.strength(strength);
+        
+        // Restart simulation
+        simulation
+            .alpha(1)
+            .restart();
+    }
+
+    // Create legend
+    function createLegend(svg, fileColors) {
+        const legendContainer = d3.select('#visualization')
+            .append('div')
+            .attr('class', 'legend-container');
+
+        legendContainer.append('div')
+            .attr('class', 'legend-title')
+            .text('File Legend');
+
+        const files = Object.keys(fileColors);
+
+        files.forEach(file => {
+            const item = legendContainer.append('div')
+                .attr('class', 'legend-item');
+
+            item.append('div')
+                .attr('class', 'legend-color')
+                .style('background-color', fileColors[file]);
+
+            item.append('div')
+                .attr('class', 'legend-text')
+                .text(file.replace('.jsonl', '').replace('.csv', ''));
+        });
+
+        // Add intersection examples
+        legendContainer.append('div')
+            .attr('class', 'legend-title')
+            .style('margin-top', '15px')
+            .text('Intersections');
+
+        const intersections = [
+            { files: [files[0], files[1]].filter(Boolean), label: 'alNaql & TextPAIR' },
+            { files: [files[0], files[2]].filter(Boolean), label: 'alNaql & passim' },
+            { files: [files[1], files[2]].filter(Boolean), label: 'TextPAIR & passim' },
+            { files: [files[0], files[1], files[2]].filter(Boolean), label: 'alNaql, TextPAIR & passim' }
+        ];
+
+        intersections.forEach(intersection => {
+            if (intersection.files.length > 0) {
+                const blendedColors = intersection.files.map(f => d3.rgb(fileColors[f] || '#999'));
+                let r = d3.mean(blendedColors, c => c.r);
+                let g = d3.mean(blendedColors, c => c.g);
+                let b = d3.mean(blendedColors, c => c.b);
+                const blendedColor = d3.rgb(r, g, b).toString();
+
+                const item = legendContainer.append('div')
+                    .attr('class', 'legend-item');
+
+                item.append('div')
+                    .attr('class', 'legend-color')
+                    .style('background-color', blendedColor);
+
+                item.append('div')
+                    .attr('class', 'legend-text')
+                    .text(intersection.label);
+            }
+        });
+
+        legendContainer.append('div')
+            .attr('class', 'legend-note')
+            .text('Bubble size shows number of matches in cluster');
+    }
+
+    // Display statistics about the data
+    function displayStatistics(processedData, rawData) {
+        const statsContent = d3.select('#statsContent');
+
+        // Calculate cluster size distribution
+        const clusterSizes = {};
+        rawData.forEach(cluster => {
+            if (!clusterSizes[cluster.size]) {
+                clusterSizes[cluster.size] = 0;
+            }
+            clusterSizes[cluster.size]++;
+        });
+
+        // Calculate nodes by file combination
+        const fileCombinations = {
+            'alnaql.jsonl': 0,
+            'textpair.jsonl': 0,
+            'passim.csv': 0,
+            'alnaql.jsonl_textpair.jsonl': 0,
+            'alnaql.jsonl_passim.csv': 0,
+            'textpair.jsonl_passim.csv': 0,
+            'alnaql.jsonl_textpair.jsonl_passim.csv': 0
+        };
+
+        processedData.nodes.forEach(node => {
+            if (node.files.length === 1) {
+                fileCombinations[node.files[0]]++;
+            } else if (node.files.length === 2) {
+                const key = node.files.sort().join('_');
+                fileCombinations[key] = (fileCombinations[key] || 0) + 1;
+            } else if (node.files.length === 3) {
+                const key = node.files.sort().join('_');
+                fileCombinations[key] = (fileCombinations[key] || 0) + 1;
+            }
+        });
+
+        // Total clusters and matches
+        statsContent.append('div')
+            .attr('class', 'stat-row')
+            .html(`<div>Total Clusters:</div><div>${rawData.length}</div>`);
+
+        statsContent.append('div')
+            .attr('class', 'stat-row')
+            .html(`<div>Total Matches:</div><div>${processedData.totalMatches}</div>`);
+
+        // Clusters by file combination
+        statsContent.append('div')
+            .attr('class', 'stat-row')
+            .style('margin-top', '10px')
+            .style('font-weight', 'bold')
+            .html(`<div>Clusters by Source Combination:</div><div></div>`);
+
+        // Single file combinations
+        for (const file of ['alnaql.jsonl', 'textpair.jsonl', 'passim.csv']) {
+            if (fileCombinations[file] > 0) {
+                statsContent.append('div')
+                    .attr('class', 'stat-row')
+                    .html(`<div>${file.replace('.jsonl', '').replace('.csv', '')} only:</div><div>${fileCombinations[file]}</div>`);
+            }
+        }
+
+        // Two file combinations
+        const twoFileCombos = [
+            { key: 'alnaql.jsonl_textpair.jsonl', label: 'alNaql & TextPAIR' },
+            { key: 'alnaql.jsonl_passim.csv', label: 'alNaql & passim' },
+            { key: 'textpair.jsonl_passim.csv', label: 'TextPAIR & passim' }
+        ];
+
+        twoFileCombos.forEach(combo => {
+            if (fileCombinations[combo.key] > 0) {
+                statsContent.append('div')
+                    .attr('class', 'stat-row')
+                    .html(`<div>${combo.label}:</div><div>${fileCombinations[combo.key]}</div>`);
+            }
+        });
+
+        // Three file combination
+        if (fileCombinations['alnaql.jsonl_textpair.jsonl_passim.csv'] > 0) {
+            statsContent.append('div')
+                .attr('class', 'stat-row')
+                .html(`<div>All three sources:</div><div>${fileCombinations['alnaql.jsonl_textpair.jsonl_passim.csv']}</div>`);
+        }
+
+        // Matches by file
+        statsContent.append('div')
+            .attr('class', 'stat-row')
+            .style('margin-top', '10px')
+            .style('font-weight', 'bold')
+            .html(`<div>Matches by Source:</div><div></div>`);
+
+        Object.entries(processedData.fileMatches).forEach(([file, count]) => {
+            statsContent.append('div')
+                .attr('class', 'stat-row')
+                .html(`<div>${file.replace('.jsonl', '').replace('.csv', '')}:</div><div>${count}</div>`);
+        });
+
+        // Cluster size distribution
+        statsContent.append('div')
+            .attr('class', 'stat-row')
+            .style('margin-top', '10px')
+            .style('font-weight', 'bold')
+            .html(`<div>Cluster Size Distribution:</div><div></div>`);
+
+        // Group sizes for better readability
+        const groupedSizes = {
+            '1': 0,
+            '2-3': 0,
+            '4-5': 0,
+            '6-10': 0,
+            '>10': 0
+        };
+
+        Object.entries(clusterSizes).forEach(([size, count]) => {
+            const sizeNum = parseInt(size);
+            if (sizeNum === 1) {
+                groupedSizes['1'] += count;
+            } else if (sizeNum <= 3) {
+                groupedSizes['2-3'] += count;
+            } else if (sizeNum <= 5) {
+                groupedSizes['4-5'] += count;
+            } else if (sizeNum <= 10) {
+                groupedSizes['6-10'] += count;
+            } else {
+                groupedSizes['>10'] += count;
+            }
+        });
+
+        Object.entries(groupedSizes).forEach(([sizeRange, count]) => {
+            if (count > 0) {
+                statsContent.append('div')
+                    .attr('class', 'stat-row')
+                    .html(`<div>${sizeRange} matches:</div><div>${count} clusters</div>`);
+            }
+        });
+    }
+
+    // Initialize visualization when page loads
+    document.addEventListener('DOMContentLoaded', createVisualization);
+</script>
+
+</body>
+</html>
