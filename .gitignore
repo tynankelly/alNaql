@@ -1,0 +1,54 @@
+cat > .gitignore << 'EOF'
+# Rust build artifacts
+/target/
+**/*.rs.bk
+Cargo.lock  # Uncomment this line if it's a library (keep for binaries)
+
+# Generated data and output
+/data/
+/ngrams/
+/output/
+/temp/
+/logs/
+
+# Analysis files
+ngram_analysis.txt
+ngram_analysis_aggregate.txt
+*.log
+
+# LMDB databases
+*.mdb
+*.ldb
+**/*.db/
+
+# OS-specific files
+.DS_Store
+Thumbs.db
+*~
+.*.swp
+.*.swo
+
+# IDE/Editor files
+.vscode/
+.idea/
+*.iml
+.project
+.settings/
+
+# Backup files
+*.bak
+*.backup
+*~
+
+# Compressed files (if you don't want to track them)
+*.gz
+*.zip
+*.tar
+*.tar.gz
+
+# Python cache (if you have Python scripts)
+__pycache__/
+*.py[cod]
+*$py.class
+.Python
+EOF
