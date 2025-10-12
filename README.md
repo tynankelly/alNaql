@@ -124,7 +124,7 @@ Download the latest release for your platform from the [Releases page](https://g
 
 ### 1. Prepare Your Data
 
-**Important**: AlNaql requires XML-formatted input files. Ensure your files:
+**Important**: alNaql requires XML-formatted input files. Ensure your files:
 - Are valid, well-formed XML
 - Use UTF-8 encoding
 - Contain Arabic text within XML tags
@@ -238,7 +238,7 @@ find_matches [CONFIG_FILE] [OPTIONS]
 
 ## Configuration
 
-AlNaql uses INI-style configuration files with multiple sections:
+alNaql uses INI-style configuration files with multiple sections:
 ### Configuration Sections
 
 | Section | Purpose |
@@ -381,7 +381,7 @@ See `default.ini` for a complete annotated configuration file.
 
 ### Memory Management
 
-AlNaql is memory-aware and adjusts parallelism based on available RAM:
+alNaql is memory-aware and adjusts parallelism based on available RAM:
 
 ```ini
 [execution]
@@ -440,9 +440,9 @@ allow_mmap_reads = true                    # Faster reads
 | Corpus Size | RAM | Disk | Cores |
 |-------------|-----|------|-------|
 | Small (<100MB) | 4GB | 1GB | 2+ |
-| Medium (100MB-1GB) | 8GB | 5GB | 4+ |
-| Large (1-10GB) | 16GB | 50GB | 8+ |
-| Very Large (>10GB) | 32GB+ | 200GB+ | 16+ |
+| Medium (100MB-500MB) | 8GB | 5GB | 4+ |
+| Large (500MB-1GB) | 16GB | 50GB | 8+ |
+| Very Large (>1GB) | 32GB+ | 200GB+ | 16+ |
 
 ---
 
@@ -450,7 +450,7 @@ allow_mmap_reads = true                    # Faster reads
 
 ## Banality Detection with Continuous Penalty Scaling
 
-AlNaql includes sophisticated banality detection to identify and down-weight formulaic or boilerplate text in similarity calculations. This prevents common phrases from artificially inflating similarity scores.
+alNaql includes sophisticated banality detection to identify and down-weight formulaic or boilerplate text in similarity calculations. This prevents common phrases from artificially inflating similarity scores.
 
 ### How It Works
 
@@ -472,7 +472,7 @@ AlNaql includes sophisticated banality detection to identify and down-weight for
 
 ### Continuous Penalty Scaling Algorithm
 
-Rather than binary classification (banal vs. non-banal), AlNaql uses continuous penalty scaling:
+Rather than binary classification (banal vs. non-banal), alNaql uses continuous penalty scaling:
 
 1. **Calculate Banality Density**: For each text region, calculate what proportion (0.0 to 1.0) consists of banal content
 2. **Apply Linear Penalty**: 
@@ -1169,10 +1169,6 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ---
 
-## Acknowledgments
-
-AlNaql was developed for Arabic text analysis research with a focus on historical manuscript comparison and text reuse detection.
-
 ### Technologies Used
 - **Rust**: High-performance systems programming
 - **LMDB**: Lightning Memory-Mapped Database
@@ -1183,11 +1179,11 @@ AlNaql was developed for Arabic text analysis research with a focus on historica
 
 ## Citation
 
-If you use AlNaql in your research, please cite:
+If you use alNaql in your research, please cite:
 
 ```bibtex
 @software{alnaql,
-  title = {AlNaql: High-Performance Arabic Text Comparison System},
+  title = {alNaql: High-Performance Arabic Text Comparison System},
   author = {Kelly, Tynan},
   year = {2025},
   url = {https://github.com/tynankelly/alNaql}
